@@ -1,0 +1,8 @@
+name: MultiGame
+version: '${version}'
+main: ua.besf0r.multigame.GamePlugin
+api-version: 1.19
+authors: [ besf0r ]
+softdepend: [Multiverse-Core]
+
+
