@@ -1,39 +1,54 @@
 package ua.besf0r.multigame.map
 
-import org.bukkit.Bukkit
-import org.bukkit.World
-import org.bukkit.WorldCreator
-import java.io.*
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.IOException
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Executors
 
-class CopyUtil {
-    private fun copyFileStructure(source: File, target: File) {
-        try {
-            val ignore = ArrayList(listOf("uid.dat", "session.lock", "raids.dat","stats","playerdata"))
-            if (!ignore.contains(source.name)) {
-                if (source.isDirectory) {
-                    if (!target.exists()) if (!target.mkdirs()) throw IOException("Couldn't create world directory!")
-                    val files = source.list()
-                    for (file in files) {
-                        val srcFile = File(source, file)
-                        val destFile = File(target, file)
-                        copyFileStructure(srcFile, destFile)
+object CopyUtil{
+
+    private fun copyFileStructure(source: File, target: File): CompletableFuture<Void> {
+        val executor = Executors.newSingleThreadExecutor()
+
+        val future = CompletableFuture.runAsync {
+            try {
+                val ignore = ArrayList(listOf("uid.dat", "session.lock", "raids.dat", "stats", "playerdata"))
+                if (!ignore.contains(source.name)) {
+                    if (source.isDirectory) {
+                        if (!target.exists()) {
+                            if (!target.mkdirs()) throw IOException("Couldn't create world directory!")
+                        }
+                        source.listFiles()?.forEach { file ->
+                            val srcFile = File(source, file.name)
+                            val destFile = File(target, file.name)
+                            copyFileStructure(srcFile, destFile).join() // Очікуємо завершення копіювання папки
+                        }
+                    } else {
+                        FileInputStream(source).use { `in` ->
+                            FileOutputStream(target).use { out ->
+                                val buffer = ByteArray(1024)
+                                var length: Int
+                                while (`in`.read(buffer).also { length = it } > 0) {
+                                    out.write(buffer, 0, length)
+                                }
+                            }
+                        }
                     }
-                } else {
-                    val `in`: InputStream = FileInputStream(source)
-                    val out: OutputStream = FileOutputStream(target)
-                    val buffer = ByteArray(1024)
-                    var length: Int
-                    while (`in`.read(buffer).also { length = it } > 0) out.write(buffer, 0, length)
-                    `in`.close()
-                    out.close()
                 }
+            } catch (e: IOException) {
+                throw RuntimeException(e)
             }
-        } catch (e: IOException) {
-            throw RuntimeException(e)
         }
+
+        future.whenComplete { _, _ -> executor.shutdown() }
+
+        return future
     }
-    fun copyWorld(originalWorld: World, newWorldName: String): World? {
-        copyFileStructure(originalWorld.worldFolder, File(Bukkit.getWorldContainer(), newWorldName))
-        return WorldCreator(newWorldName).createWorld()
+
+    fun copyWorld(originalWorld: File, newWorldName: String, worldContainer: File): CompletableFuture<Void> {
+        val newWorldDir = File(worldContainer, newWorldName)
+        return copyFileStructure(originalWorld, newWorldDir)
     }
 }

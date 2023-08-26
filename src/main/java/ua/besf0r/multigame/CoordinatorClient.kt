@@ -31,14 +31,15 @@ object CoordinatorClient {
             try {
                 val playerTurn = Json.decodeFromString<PlayerTurn>(message.data.decodeToString())
                 if (playerTurn.side == SideEnum.CLIENT) {
-                    var session = playerTurn.findSession(sessions)
+                    val session = playerTurn.findSession(sessions)
                     if (session == null) {
-                        session = SessionManager(this).createSession(playerTurn.settings)
-                        if (session != null) {
-                            registerPlayerInTurn(session, connection, "${gamePrefix}-out", playerTurn)
+                        SessionManager(this).createSession(playerTurn.settings) {
+                            registerPlayerInTurn(it, connection, "${gamePrefix}-out", playerTurn)
                         }
                     } else {
-                        registerPlayerInTurn(session, connection, "${gamePrefix}-out", playerTurn)
+                        if (!session.playerInTurnList.contains(playerTurn.player)) {
+                            registerPlayerInTurn(session, connection, "${gamePrefix}-out", playerTurn)
+                        }
                     }
                 }
                 message.ack()

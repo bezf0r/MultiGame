@@ -25,6 +25,9 @@ class SessionIsolator(
     @EventHandler
     fun disableQuitMessages(event: PlayerQuitEvent) {
         event.quitMessage = ""
+
+        val game = gameSettings.getSessionByPlayer(event.player)
+        game?.players?.remove(event.player)
     }
     @EventHandler
     fun disableJoinMessages(event: PlayerJoinEvent) {
@@ -42,6 +45,7 @@ class SessionIsolator(
 
         val player = event.player
         val game = gameSettings.getSessionByPlayer(event.player)
+        game?.playerInTurnList?.remove(event.player.name)
         Bukkit.getOnlinePlayers().forEach { otherPlayer ->
             if (game != null) {
                 if (!game.players.contains(otherPlayer)) {

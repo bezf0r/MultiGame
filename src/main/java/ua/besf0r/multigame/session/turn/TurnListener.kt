@@ -30,6 +30,7 @@ class TurnListener(private val gameSettings: GameSettings): Listener {
     private fun addPlayer(session: SessionData, player: Player){
         player.gameMode = GameMode.SURVIVAL
         player.teleport(session.map)
+        session.playerInTurnList.remove(player.name)
 
         session.players.add(player)
     }
